@@ -1,5 +1,7 @@
-// #![allow(dead_code)]
-// #![allow(unused_variables)] // Ignore unused variables for now
+// Ignore unused stuff for now
+#![allow(dead_code)]
+#![allow(unused_imports)]
+#![allow(unused_variables)]
 
 use reqwest::Error as ReqwestError;
 use dotenv::dotenv;
@@ -16,11 +18,11 @@ use serenity::{
     json::json,
 };
 
-#[derive(Debug, Deserialize)]
-struct ChatCompletion {
+// #[derive(Debug, Deserialize)]
+// struct ChatCompletion {
    
-    choices: Vec<Choice>,
-}
+//     choices: Vec<Choice>,
+// }
 
 // #[derive(Debug, Deserialize)]
 // struct Usage {
@@ -29,27 +31,27 @@ struct ChatCompletion {
 //     total_tokens: i32
 // }
 
-#[derive(Debug, Deserialize, Serialize)]
-struct Choice {
-    message: Message,
-    finish_reason: String,
-    index: i32
-}
+// #[derive(Debug, Deserialize, Serialize)]
+// struct Choice {
+//     message: Message,
+//     finish_reason: String,
+//     index: i32
+// }
 
-#[derive(Debug, Serialize)]
-struct OpenAIRequest {
-    model: String,
-    messages: Vec<OpenAIMessage>,
-}
+// #[derive(Debug, Serialize)]
+// struct OpenAIRequest {
+//     model: String,
+//     messages: Vec<OpenAIMessage>,
+// }
 
-#[derive(Debug, Deserialize, Serialize)]
-struct OpenAIMessage {
-    role: String,
-    content: String
-}
+// #[derive(Debug, Deserialize, Serialize)]
+// struct OpenAIMessage {
+//     role: String,
+//     content: String
+// }
 
 #[group]
-#[commands(ping, hi, print, summarize)]
+#[commands(ping, hi, print, econfig)]
 struct General;
 
 struct Handler;
@@ -102,55 +104,112 @@ async fn print(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     Ok(())
 }
 
-// Doesn't work :(
 #[command]
-async fn summarize(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    let rapid_api_key = env::var("RAPID_API_KEY").expect("Missing Rapid API key");
-    let text = args.rest().to_string();
+async fn econfig(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    let sub = [
+        "s", "s", "p", "s", "p", "s", "d", "p", "s", "d", "p", "s", "f", "d", "p", "s", "f", "d",
+        "p", "f", "d", "f",
+    ];
+    let principal_quantum_number: [i32; 22] = [1, 2, 2, 3, 3, 4, 3, 4, 5, 4, 5, 6, 4, 5, 6, 7, 5, 6, 7, 6, 7, 7];
+    let diff: i32;
+    let mut electrons: [i32; 22] = [0; 22];
+    let mut current_electron: i32 = 0;
+    let mut l: usize = 0;
+    let mut answer = String::new();
 
-    // // Use GPT 3.5 to summarize
-    let summary_preamble = "Summarize the following: ".to_string();
+    let mut args = args;
+    let atomic_number: i32 = args.single().unwrap();
 
-    println!("Summarizing...");
+    while atomic_number != current_electron {
+        match sub[l] {
+            "s" => {
+                current_electron += 2;
+                electrons[l] += 2;
+            }
+            "p" => {
+                current_electron += 6;
+                electrons[l] += 6;
+            }
+            "d" => {
+                current_electron += 10;
+                electrons[l] += 10;
+            }
+            _ => {
+                current_electron += 14;
+                electrons[l] += 14;
+            }
+        }
 
-    let ai_summary = chatgpt(&text.to_string(), &summary_preamble, &rapid_api_key).await?;
-    let ai_summary_text = &ai_summary.choices[0].message.content;
+        if current_electron > atomic_number {
+            diff = current_electron - atomic_number;
+            electrons[l] -= diff;
+            break;
+        }
 
-    println!("{:?}", ai_summary);
+        l += 1;
+    }
 
-    msg.reply(ctx, ai_summary_text).await?;
+    for i in 0..l + 1 {
+        let electrons_string = electrons[i].to_string();
+        let principal_quantum_string = principal_quantum_number[i].to_string();
+
+        answer.push_str(&format!("{}{}{} ", principal_quantum_string, sub[i], electrons_string));
+    }
+
+    msg.reply(ctx, answer).await?;
 
     Ok(())
 }
 
-async fn chatgpt(text: &String, preamble: &String, api_key: &String) -> Result<ChatCompletion, ReqwestError> {
-    let client = reqwest::Client::new();
+// Doesn't work :(
+// #[command]
+// async fn summarize(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+//     let rapid_api_key = env::var("RAPID_API_KEY").expect("Missing Rapid API key");
+//     let text = args.rest().to_string();
 
-    let mut open_ai_headers = reqwest::header::HeaderMap::new();
-    open_ai_headers.insert("Content-Type", "application/json".parse().unwrap());
-    open_ai_headers.insert("X-RapidAPI-Key", api_key.parse().unwrap());
-    open_ai_headers.insert("X-RapidAPI-Host", "openai80.p.rapidapi.com".parse().unwrap());
+//     // // Use GPT 3.5 to summarize
+//     let summary_preamble = "Summarize the following: ".to_string();
 
-    let open_ai_req_opts = json!({
-        "model": "gpt-3.5-turbo",
-        "messages": [
-            {
-                "role": "user",
-                "content": text
-            }
-        ]
-    });
+//     println!("Summarizing...");
 
-    let open_ai_summary_res = client
-        .post("https://openai80.p.rapidapi.com/chat/completions")
-        .headers(open_ai_headers)
-        .json(&open_ai_req_opts)
-        .send()
-        .await?
-        .text()
-        .await?;
+//     let ai_summary = chatgpt(&text.to_string(), &summary_preamble, &rapid_api_key).await?;
+//     let ai_summary_text = &ai_summary.choices[0].message.content;
 
-    let chat_completion: ChatCompletion = serde_json::from_str(&open_ai_summary_res).unwrap();
+//     println!("{:?}", ai_summary_text);
 
-    Ok(chat_completion)
-}
+//     msg.reply(ctx, ai_summary_text).await?;
+
+//     Ok(())
+// }
+
+// async fn chatgpt(text: &String, _preamble: &String, api_key: &String) -> Result<ChatCompletion, ReqwestError> {
+//     let client = reqwest::Client::new();
+
+//     let mut open_ai_headers = reqwest::header::HeaderMap::new();
+//     open_ai_headers.insert("Content-Type", "application/json".parse().unwrap());
+//     open_ai_headers.insert("X-RapidAPI-Key", api_key.parse().unwrap());
+//     open_ai_headers.insert("X-RapidAPI-Host", "openai80.p.rapidapi.com".parse().unwrap());
+
+//     let open_ai_req_opts = json!({
+//         "model": "gpt-3.5-turbo",
+//         "messages": [
+//             {
+//                 "role": "user",
+//                 "content": text
+//             }
+//         ]
+//     });
+
+//     let open_ai_summary_res = client
+//         .post("https://openai80.p.rapidapi.com/chat/completions")
+//         .headers(open_ai_headers)
+//         .json(&open_ai_req_opts)
+//         .send()
+//         .await?
+//         .text()
+//         .await?;
+
+//     let chat_completion: ChatCompletion = serde_json::from_str(&open_ai_summary_res).unwrap();
+
+//     Ok(chat_completion)
+// }
